@@ -1,0 +1,8 @@
+AppData/
+*.jtx
+*.json
+node_modules/
+.vscode/
+*.log
+__pycache__/
+*.pyc
