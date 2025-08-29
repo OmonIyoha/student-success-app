@@ -176,8 +176,25 @@ if train_btn:
     mae = mean_absolute_error(yte, ypred)
     r2 = r2_score(yte, ypred)
 
-    st.subheader("📈 Performance")
+        st.subheader("📈 Performance")
     st.table({"MAE": [mae], "RMSE": [rmse], "R²": [r2]})
+
+    # Feedback Block 👇
+    avg_pred = np.mean(ypred)
+    st.markdown("### Feedback")
+    if avg_pred >= 70:
+        st.success("Excellent! The model predicts positive student performance. Keep up the great work!")
+    elif avg_pred >= 60:
+        st.info("Good, but there is room for improvement. Consider reviewing your study strategies and maintaining consistency.")
+    else:
+        st.warning("The predicted performance is below average. Here are some suggestions to help improve:")
+        st.markdown("""
+        - 📘 Increase study hours or optimise your study schedule  
+        - 🏫 Improve class attendance and participation  
+        - 😴 Prioritise good sleep habits and self-care  
+        - 🤝 Seek support from tutors, mentors, or study groups  
+        - 📵 Reduce time spent on distractions such as excessive social media
+        """)
 
 tab1, tab2, tab3 = st.tabs(["📊 Plots","⭐ Importance / Coefficients","🔎 Predictions sample"])
 
