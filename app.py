@@ -154,26 +154,58 @@ if train_btn:
     mse = mean_squared_error(yte, ypred); rmse=float(np.sqrt(mse))
     mae = mean_absolute_error(yte, ypred); r2 = r2_score(yte, ypred)
    if train_btn:
+    df = data[feature_cols + [target_col]].copy()
+    y = pd.to_numeric(df[target_col], errors="coerce")
+    if y.isna().all():
+        st.error("Target has no numeric values.")
+        st.stop()
+    y = y.fillna(y.median())
+    num_cols, cat_cols, df = detect_num_cat(df, feature_cols, 0.6)
+    st.info(f"Numeric: {num_cols or 'None'}")
+    st.info(f"Categorical: {cat_cols or 'None'}")
+    X = df[feature_cols].copy()
+    pre = build_pre(num_cols, cat_cols, standardize)
+
+    if model_name == "Linear Regression":
+        model = LinearRegression()
+    elif model_name == "Random Forest":
+        model = RandomForestRegressor(
+            n_estimators=params["n_estimators"],
+            max_depth=None if params["max_depth"] == 0 else params["max_depth"],
+            min_samples_split=params["min_samples_split"],
+            min_samples_leaf=params["min_samples_leaf"],
+            random_state=seed,
+            n_jobs=-1
+        )
+    elif model_name == "SVR":
+        model = SVR(C=params["C"], epsilon=params["epsilon"], kernel=params["kernel"])
+    else:
+        if not XGB_OK:
+            st.error("Install xgboost or pick another model.")
+            st.stop()
+        model = XGBRegressor(
+            n_estimators=params["n_estimators"],
+            learning_rate=params["learning_rate"],
+            max_depth=params["max_depth"],
+            subsample=params["subsample"],
+            colsample_bytree=params["colsample_bytree"],
+            random_state=seed
+        )
+
+    pipe = Pipeline([("pre", pre), ("model", model)])
+    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=test_size, random_state=seed)
+
+    with st.spinner("Training..."):
+        pipe.fit(Xtr, ytr)
+
+    ypred = pipe.predict(Xte)
+    mse = mean_squared_error(yte, ypred)
+    rmse = float(np.sqrt(mse))
+    mae = mean_absolute_error(yte, ypred)
+    r2 = r2_score(yte, ypred)
+
     st.subheader("📈 Performance")
     st.table({"MAE": [mae], "RMSE": [rmse], "R²": [r2]})
-
-# --- Feedback Block ---
-avg_pred = np.mean(ypred)
-st.markdown("### Feedback")
-if avg_pred >= 70:
-    st.success("Excellent! The model predicts positive student performance. Keep up the great work!")
-elif avg_pred >= 60:
-    st.info("Good, but there is room for improvement. Consider reviewing your study strategies and maintaining consistency.")
-else:
-    st.warning("The predicted performance is below average. Here are some suggestions to help improve:")
-    st.write("""
-    - Increase study hours or optimise your study schedule
-    - Improve class attendance and participation
-    - Prioritise good sleep habits and self-care
-    - Seek support from tutors, mentors, or study groups
-    - Reduce time spent on distractions such as excessive social media
-    """)
-# --- End Feedback Block ---
 
 tab1, tab2, tab3 = st.tabs(["📊 Plots","⭐ Importance / Coefficients","🔎 Predictions sample"])
 
