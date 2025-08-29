@@ -176,7 +176,7 @@ if train_btn:
     mae = mean_absolute_error(yte, ypred)
     r2 = r2_score(yte, ypred)
 
-        st.subheader("📈 Performance")
+    st.subheader("📈 Performance")
     st.table({"MAE": [mae], "RMSE": [rmse], "R²": [r2]})
 
     # Feedback Block 👇
