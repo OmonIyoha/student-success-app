@@ -153,43 +153,86 @@ if train_btn:
     ypred = pipe.predict(Xte)
     mse = mean_squared_error(yte, ypred); rmse=float(np.sqrt(mse))
     mae = mean_absolute_error(yte, ypred); r2 = r2_score(yte, ypred)
-    st.subheader("📈 Performance"); st.table({"MAE":[mae], "RMSE":[rmse], "R²":[r2]})
-    tab1, tab2, tab3 = st.tabs(["📊 Plots","⭐ Importance / Coefficients","🔎 Predictions sample"])
-    with tab1:
-        c1,c2=st.columns(2)
-        with c1:
-            fig,ax=plt.subplots(); ax.scatter(yte, ypred, alpha=0.7)
-            mn,mx=float(min(yte.min(), ypred.min())), float(max(yte.max(), ypred.max()))
-            ax.plot([mn,mx],[mn,mx],"--",linewidth=2); ax.set_xlabel("Actual"); ax.set_ylabel("Predicted")
-            ax.set_title("Actual vs Predicted"); st.pyplot(fig, clear_figure=True)
-        with c2:
-            fig2,ax2=plt.subplots(); ax2.hist(yte-ypred, bins=30); ax2.set_title("Residuals"); st.pyplot(fig2, clear_figure=True)
-    with tab2:
-        try: feats=feature_names(pipe.named_steps["pre"], num_cols, cat_cols)
-        except Exception: feats=[f"f{i}" for i in range(pipe.named_steps["pre"].transform(Xte[:1]).shape[1])]
-        m = pipe.named_steps["model"]
-        if hasattr(m,"feature_importances_"):
-            imp = pd.DataFrame({"feature":feats,"importance":m.feature_importances_}).sort_values("importance",ascending=False)
-            st.dataframe(imp.head(30), use_container_width=True)
-            fig3,ax3=plt.subplots(figsize=(6,6)); top=imp.head(15); ax3.barh(top["feature"][::-1], top["importance"][::-1])
-            ax3.set_title("Feature Importance (Top 15)"); st.pyplot(fig3, clear_figure=True)
-        elif isinstance(m, LinearRegression) and hasattr(m,"coef_"):
-            coefs=np.ravel(m.coef_); dfc=pd.DataFrame({"feature":feats,"coefficient":coefs})
-            dfc["abs"]=dfc["coefficient"].abs(); dfc=dfc.sort_values("abs",ascending=False).drop(columns="abs")
-            st.dataframe(dfc.head(50), use_container_width=True)
-            fig4,ax4=plt.subplots(figsize=(6,6)); top=dfc.copy(); top["abs"]=top["coefficient"].abs()
-            top=top.sort_values("abs",ascending=False).head(15); ax4.barh(top["feature"][::-1], top["coefficient"][::-1])
-            ax4.set_title("Linear Coefficients (Top 15 by |coef|)"); st.pyplot(fig4, clear_figure=True)
-        else:
-            st.info("Use RF/XGBoost for importances or Linear for coefficients.")
-    with tab3:
-        preview=pd.DataFrame({"y_true":yte[:25].to_numpy(),"y_pred":ypred[:25]}); st.dataframe(preview,use_container_width=True)
-        st.subheader("📦 Export")
-        st.download_button("Download trained model (.pkl)", data=pickle.dumps(pipe),
-                           file_name=f"model_{model_name.replace(' ','_').lower()}.pkl", mime="application/octet-stream")
-        preds=pd.DataFrame({"y_true":yte,"y_pred":ypred}).reset_index(names="row")
-        st.download_button("Download predictions (.csv)", data=preds.to_csv(index=False).encode("utf-8"),
-                           file_name="predictions.csv", mime="text/csv")
+    st.subheader("📈 Performance")
+st.table({"MAE":[mae], "RMSE":[rmse], "R²":[r2]})
+
+# --- Feedback Block ---
+avg_pred = np.mean(ypred)
+st.markdown("### Feedback")
+if avg_pred >= 70:
+    st.success("Excellent! The model predicts positive student performance. Keep up the great work!")
+elif avg_pred >= 60:
+    st.info("Good, but there is room for improvement. Consider reviewing your study strategies and maintaining consistency.")
+else:
+    st.warning("The predicted performance is below average. Here are some suggestions to help improve:")
+    st.write("""
+    - Increase study hours or optimise your study schedule
+    - Improve class attendance and participation
+    - Prioritise good sleep habits and self-care
+    - Seek support from tutors, mentors, or study groups
+    - Reduce time spent on distractions such as excessive social media
+    """)
+# --- End Feedback Block ---
+
+tab1, tab2, tab3 = st.tabs(["📊 Plots","⭐ Importance / Coefficients","🔎 Predictions sample"])
+
+with tab1:
+    c1, c2 = st.columns(2)
+    with c1:
+        fig, ax = plt.subplots()
+        ax.scatter(yte, ypred, alpha=0.7)
+        mn, mx = float(min(yte.min(), ypred.min())), float(max(yte.max(), ypred.max()))
+        ax.plot([mn, mx], [mn, mx], "--", linewidth=2)
+        ax.set_xlabel("Actual")
+        ax.set_ylabel("Predicted")
+        ax.set_title("Actual vs Predicted")
+        st.pyplot(fig, clear_figure=True)
+    with c2:
+        fig2, ax2 = plt.subplots()
+        ax2.hist(yte - ypred, bins=30)
+        ax2.set_title("Residuals")
+        st.pyplot(fig2, clear_figure=True)
+
+with tab2:
+    try:
+        feats = feature_names(pipe.named_steps["pre"], num_cols, cat_cols)
+    except Exception:
+        feats = [f"f{i}" for i in range(pipe.named_steps["pre"].transform(Xte[:1]).shape[1])]
+    m = pipe.named_steps["model"]
+    if hasattr(m, "feature_importances_"):
+        imp = pd.DataFrame({"feature": feats, "importance": m.feature_importances_}).sort_values("importance", ascending=False)
+        st.dataframe(imp.head(30), use_container_width=True)
+        fig3, ax3 = plt.subplots(figsize=(6, 6))
+        top = imp.head(15)
+        ax3.barh(top["feature"][::-1], top["importance"][::-1])
+        ax3.set_title("Feature Importance (Top 15)")
+        st.pyplot(fig3, clear_figure=True)
+    elif isinstance(m, LinearRegression) and hasattr(m, "coef_"):
+        coefs = np.ravel(m.coef_)
+        dfc = pd.DataFrame({"feature": feats, "coefficient": coefs})
+        dfc["abs"] = dfc["coefficient"].abs()
+        dfc = dfc.sort_values("abs", ascending=False).drop(columns="abs")
+        st.dataframe(dfc.head(50), use_container_width=True)
+        fig4, ax4 = plt.subplots(figsize=(6, 6))
+        top = dfc.copy()
+        top["abs"] = top["coefficient"].abs()
+        top = top.sort_values("abs", ascending=False).head(15)
+        ax4.barh(top["feature"][::-1], top["coefficient"][::-1])
+        ax4.set_title("Linear Coefficients (Top 15 by |coef|)")
+        st.pyplot(fig4, clear_figure=True)
+    else:
+        st.info("Use RF/XGBoost for importances or Linear for coefficients.")
+
+with tab3:
+    preview = pd.DataFrame({"y_true": yte[:25].to_numpy(), "y_pred": ypred[:25]})
+    st.dataframe(preview, use_container_width=True)
+    st.subheader("📦 Export")
+    st.download_button("Download trained model (.pkl)", data=pickle.dumps(pipe),
+                       file_name=f"model_{model_name.replace(' ', '_').lower()}.pkl", mime="application/octet-stream")
+    preds = pd.DataFrame({"y_true": yte, "y_pred": ypred}).reset_index(names="row")
+    st.download_button("Download predictions (.csv)", data=preds.to_csv(index=False).encode("utf-8"),
+                       file_name="predictions.csv", mime="text/csv")
+
 
 st.markdown("---"); st.subheader("🏁 Compare models with cross-validation")
 with st.expander("Show comparison settings", expanded=False):
