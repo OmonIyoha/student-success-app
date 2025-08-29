@@ -153,8 +153,9 @@ if train_btn:
     ypred = pipe.predict(Xte)
     mse = mean_squared_error(yte, ypred); rmse=float(np.sqrt(mse))
     mae = mean_absolute_error(yte, ypred); r2 = r2_score(yte, ypred)
+   if train_btn:
     st.subheader("📈 Performance")
-st.table({"MAE":[mae], "RMSE":[rmse], "R²":[r2]})
+    st.table({"MAE": [mae], "RMSE": [rmse], "R²": [r2]})
 
 # --- Feedback Block ---
 avg_pred = np.mean(ypred)
